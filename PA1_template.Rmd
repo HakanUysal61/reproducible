@@ -1,0 +1,134 @@
+---
+title: "My Course Project"
+author: "Hakan UYSAL"
+date: "11/26/2019"
+output: html_document
+runtime: shiny
+---
+## Read and group
+This part is to read data and put it into data frame.
+
+Related activity data is received from below link.
+
+[data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip)
+
+
+
+Then unzipped and put to local folder.
+
+
+```{r setup, include=TRUE,eval=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:/Users/ENKHUY/Documents/TRAINING/R/Reproducible")
+library(tidyr)
+library(dplyr)
+library(reshape2)
+library(data.table)
+library(tidyselect)
+library(datasets)
+library(lattice)
+library(ggplot2)
+
+data<-read.csv("activity.csv")
+data$date<-as.Date(data$date)
+data$steps<-as.integer(data$steps)
+data$interval<-as.integer(data$interval)
+summary(data)
+head(data,20)
+```
+
+
+## Calculate and Plot daily total steps
+This part is to calculate and plot the sum for daily steps.
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+data2 <- data  %>% group_by(date) %>% summarise(sum(steps))
+names(data2)[2]<-"steps"
+names(data2)[1]<-"date"
+data2<-na.omit(data2,c("steps"))
+
+data2 %>% 
+  ggplot( aes(x=date,y=steps)) +
+    geom_col(color="blue")+
+  labs(title="Daily Total steps",x="Date",y="Steps")
+
+print(mean(data2$steps))
+print(median(data2$steps))
+```
+## Average daily activity pattern
+In this section daily activity will be plotted.
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+data2<-mutate(data,dateinterval=as.POSIXct(as.POSIXct(data$date)+data$interval*60))
+
+data2 %>% 
+  ggplot( aes(x=dateinterval, y=steps)) +
+    geom_line(color="#69b3a2") +
+    ylim(0,800)   
+
+d<-order(data2$steps,decreasing = TRUE)
+# find maximum steps
+print(data2$dateinterval[d[1]])
+
+```
+
+## Imputing missing values
+
+This section the missing values will be imputed.
+Mean is selected as strategy to impute values.
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+data3<-data
+nadata<-is.na(data$steps)
+data3$steps[nadata]<-mean(data$steps,na.rm=TRUE)
+
+data4 <- data3  %>% group_by(date) %>% summarise(sum(steps))
+names(data4)[2]<-"steps"
+names(data4)[1]<-"date"
+data4 %>% 
+  ggplot( aes(x=date,y=steps)) +
+    geom_col(color="blue")+
+  labs(title="Daily Total steps",x="Date",y="Steps")
+     
+```
+
+### Observation
+
+It is observed that after imputation gaps on the graphs are filled.
+
+## Are there differences between weekdays and weekends?
+
+Weekdays and weekends data will be put to a factor variable and analysis will be done to draw both.
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+data3<-data
+nadata<-is.na(data$steps)
+data3$steps[nadata]<-mean(data$steps,na.rm=TRUE)
+
+data2<-mutate(data3,weekday=weekdays(date))
+data2<-mutate(data2,weekend=(weekday=="Saturday" | weekday=="Sunday"))
+data2<-mutate(data2,weekendd="weekday")
+data2$weekendd[data2$weekend]<-"weekend"
+
+# Categorise the weekend for activity days.
+
+data2 %>% 
+  ggplot( aes(x=interval,y=steps)) +
+    geom_line(color="blue",size=0.2)+ 
+  facet_wrap(.~weekendd,strip.position = "top",dir="v")+
+  labs(title="weekend-weekday activity",x="Interval",y="number of steps")
+     
+```
+
+### Observation
+
+Weekends actiivity is a bit less compared to weekdays activity.
+
